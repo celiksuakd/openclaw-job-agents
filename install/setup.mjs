@@ -485,10 +485,10 @@ ${'\x1b[32m'}✓ JobSquad is ready.${'\x1b[0m'}
   A short guide: ${path.join(HOME, 'HOW-TO-USE.md')}
 `);
   if (process.platform === 'darwin') {
-    spawnSync(OC.bin, [...(opt.profile ? ['--profile', opt.profile] : []), 'dashboard'], { encoding: 'utf8', timeout: 60_000 });
-    try { fs.writeFileSync(path.join(HOME, '.paired'), ''); } catch {}
-    await new Promise((r) => setTimeout(r, 3000));
-    spawnSync('open', [`http://127.0.0.1:${port}/chat/job-chief?draft=${encodeURIComponent('Hi! I just set up JobSquad.')}`]);
+    // One-time pairing token in the URL fragment: pairs this browser and opens job-chief directly.
+    const pair = ocJson(['dashboard']);
+    const frag = pair?.browserUrl?.includes('#') ? pair.browserUrl.slice(pair.browserUrl.indexOf('#')) : '';
+    spawnSync('open', [`http://127.0.0.1:${port}/chat/job-chief?draft=${encodeURIComponent('Hi! I just set up JobSquad.')}${frag}`]);
   }
   wiz.closeIo();
 }

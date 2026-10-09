@@ -244,23 +244,23 @@ ${a.resumeText.replace(/\r/g, '').replace(/\n{3,}/g, '\n\n')}
 }
 
 // Desktop shortcuts that open the chat and the files folder.
-export function makeShortcuts(home, openclawBin, port) {
+// The chat link carries a fresh one-time pairing token from `openclaw dashboard --json`, so the
+// browser (Safari, Chrome, …) is paired and lands on job-chief in one step, every time.
+export function makeShortcuts(home, openclawBin, port, nodeBin = process.execPath) {
   const desk = path.join(os.homedir(), 'Desktop');
   if (!fs.existsSync(desk)) return [];
   const launcher = path.join(desk, 'JobSquad.command');
   fs.writeFileSync(launcher, `#!/bin/bash
 # Opens your JobSquad chat. Double-click me.
 OC='${openclawBin}'
+NODE='${nodeBin}'
 PORT=${port}
 if ! curl -s -o /dev/null -m 2 "http://127.0.0.1:$PORT/"; then
   echo "Starting JobSquad…"; "$OC" daemon start >/dev/null 2>&1 || "$OC" gateway start >/dev/null 2>&1
   for i in $(seq 1 30); do curl -s -o /dev/null -m 1 "http://127.0.0.1:$PORT/" && break; sleep 1; done
 fi
-if [ ! -f '${home}/.paired' ]; then
-  "$OC" dashboard >/dev/null 2>&1 && touch '${home}/.paired'
-  sleep 4
-fi
-open "http://127.0.0.1:$PORT/chat/job-chief"
+PAIR=$("$OC" dashboard --json 2>/dev/null | "$NODE" -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const u=JSON.parse(s.slice(s.indexOf("{"))).browserUrl||"";const i=u.indexOf("#");process.stdout.write(i>=0?u.slice(i):"")}catch{}})')
+open "http://127.0.0.1:$PORT/chat/job-chief$PAIR"
 osascript -e 'tell application "Terminal" to close (every window whose name contains "JobSquad.command")' >/dev/null 2>&1 &
 exit 0
 `, { mode: 0o755 });
