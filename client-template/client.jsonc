@@ -1,0 +1,68 @@
+// JobSquad settings for one client. Comments and trailing commas are fine.
+// The agents re-read this file on every run, so edits take effect immediately.
+{
+  "client": {
+    "name": "REPLACE Jane Doe",
+    "timezone": "Europe/Istanbul",      // IANA name; used for schedules and the digest date
+    "language": "en"                    // language the Chief writes to the client in (en, tr, de, ...)
+  },
+
+  // review = nothing is submitted until the client says "approve <ids>"   (recommended start)
+  // assist = forms are filled but never submitted; the client presses Submit
+  // auto   = high-scoring jobs on simple ATSs are submitted without asking (see limits + apply_policy)
+  "mode": "review",
+  "paused": false,
+
+  "limits": {
+    "max_applications_per_day": 10,    // rolling 24h
+    "max_per_company_30d": 2,
+    "min_score_to_shortlist": 70,
+    "min_score_auto_apply": 85,         // only used in auto mode
+    "max_digest_items": 12,
+    "follow_up_after_days": 7,
+    "ghost_after_days": 30
+  },
+
+  "search": {
+    // A job must match at least one title. Plain words match whole words in order,
+    // so "data analyst" matches "Senior Data Analyst, Growth". "/regex/" also works.
+    "titles": ["data analyst", "business analyst", "analytics engineer"],
+    "exclude_title": ["intern", "director", "principal", "/\\bvp\\b/"],
+    "locations": ["Istanbul", "Turkey", "Türkiye", "EMEA", "Europe"],
+    "remote_ok": true,                  // remote jobs pass the location filter (the Matcher still checks eligibility)
+    "exclude_companies": [],
+    "must_have_any": [],                // e.g. ["sql", "python"]: at least one must appear in the description
+    "deal_breakers": ["unpaid", "commission only"], // the Matcher scores these ≤ 20
+    "max_age_days": 21,
+    "notes": "Prefers product companies, fintech or e-commerce. No gambling. Open to relocating within the EU with sponsorship."
+  },
+
+  // Where to look. Board tokens are the slug in the company's job-board URL:
+  //   boards.greenhouse.io/<token>   jobs.lever.co/<token>   jobs.ashbyhq.com/<token>
+  //   apply.workable.com/<token>     jobs.smartrecruiters.com/<Token>
+  // The Scout also adds boards it discovers (see `jobsquad boards list`).
+  "sources": {
+    "greenhouse": ["anthropic"],
+    "lever": [],
+    "ashby": [],
+    "workable": [],
+    "smartrecruiters": [],
+    "remotive": { "enabled": true },    // remote jobs, searched by your titles
+    "remoteok": { "enabled": false },
+    "arbeitnow": { "enabled": false },  // Germany / EU
+    "himalayas": { "enabled": false }
+  },
+
+  "apply_policy": {
+    "auto_submit_ats": ["greenhouse", "lever", "ashby"],
+    "requires_human_ats": ["workday", "icims", "taleo", "successfactors", "oracle"],
+    "never_apply_domains": ["linkedin.com", "indeed.com", "glassdoor.com", "ziprecruiter.com"]
+  },
+
+  "writing": {
+    "resume_strategy": "tailored",      // "tailored" (rewritten per job from master_resume.md) or "original" (always upload client/resume.pdf)
+    "cover_letter": true,
+    "tone": "warm, direct, specific; no clichés",
+    "allow_terms": []                   // extra terms QA may accept that aren't in master_resume.md (client-confirmed only)
+  }
+}

@@ -1,0 +1,19 @@
+# Never commit client data
+jobsquad/
+client/
+!client-template/
+*.db
+*.db-shm
+*.db-wal
+applications/
+reports/
+*.pdf
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+node_modules/

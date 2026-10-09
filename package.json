@@ -1,0 +1,16 @@
+{
+  "name": "openclaw-job-agents",
+  "version": "1.0.0",
+  "description": "JobSquad: six OpenClaw agents that find, tailor and apply to jobs with the candidate in control",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "bin": { "jobsquad": "runtime/jobsquad.mjs" },
+  "scripts": {
+    "test": "node --no-warnings tests/smoke.mjs",
+    "test:online": "node --no-warnings tests/smoke.mjs --online",
+    "check": "node --check runtime/jobsquad.mjs && node --check install/setup.mjs"
+  },
+  "keywords": ["openclaw", "agents", "job-search", "automation"]
+}

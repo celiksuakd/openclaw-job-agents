@@ -1,0 +1,64 @@
+// Standard answers the Applier types into application forms. It never invents an answer:
+// if a required question isn't covered here or in the job's answers.md, the job goes to "needs you".
+{
+  "identity": {
+    "first_name": "REPLACE",
+    "last_name": "REPLACE",
+    "preferred_name": "",
+    "email": "REPLACE@example.com",
+    "phone": "+90 5xx xxx xx xx",
+    "city": "Istanbul",
+    "country": "Türkiye",
+    "linkedin": "https://www.linkedin.com/in/REPLACE",
+    "github": "",
+    "portfolio": "",
+    "pronouns": ""                       // leave empty to skip optional pronoun fields
+  },
+
+  "work_authorization": {
+    // Be exact; wrong answers here can void an offer.
+    "Türkiye": "Citizen, no sponsorship needed",
+    "European Union": "Requires sponsorship",
+    "United Kingdom": "Requires sponsorship",
+    "United States": "Requires sponsorship",
+    "default": "Requires sponsorship"
+  },
+  "willing_to_relocate": "Yes, within the EU",
+  "remote_preference": "Remote or hybrid",
+  "notice_period": "1 month",
+  "earliest_start_date": "Available with 1 month notice",
+
+  "salary": {
+    "currency": "EUR",
+    "minimum_annual": 45000,
+    "target_annual": 55000,
+    "answer_text": "My expectation is in the €50–60k range, depending on the full package.",
+    "share_when_optional": false         // leave optional salary fields blank
+  },
+
+  "years_experience": { "total": 4, "sql": 4, "python": 3, "tableau": 2 },
+  "highest_education": "BSc Industrial Engineering, Boğaziçi University, 2021",
+  "languages": { "Turkish": "Native", "English": "Professional (C1)" },
+
+  "how_did_you_hear": "Company careers page",
+  "previously_worked_here": "No",
+  "has_relatives_at_company": "No",
+  "background_check_ok": "Yes",
+  "over_18": "Yes",
+
+  // Voluntary self-identification (EEO / diversity) questions.
+  "eeo": {
+    "gender": "Decline to self-identify",
+    "race_ethnicity": "Decline to self-identify",
+    "veteran_status": "I don't wish to answer",
+    "disability": "I don't wish to answer"
+  },
+
+  // Consent the client gave at onboarding. The Applier may tick required data-processing
+  // consent boxes needed to apply. Marketing / talent-community opt-ins stay unticked.
+  "consent": {
+    "data_processing_to_apply": true,
+    "talent_pool_retention": false,
+    "marketing": false
+  }
+}
