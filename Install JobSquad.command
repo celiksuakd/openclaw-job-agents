@@ -1,6 +1,7 @@
 #!/bin/bash
 # Double-click this file in Finder to set up JobSquad on this Mac.
-# (First time: right-click it → Open → Open, because it was downloaded from the internet.)
+# If macOS says it "could not verify" this file: click Done, then System Settings → Privacy & Security
+# → "Open Anyway". Or skip the warning entirely with the Terminal one-liner in docs/MAC-START-HERE.md.
 cd "$(dirname "$0")" || exit 1
 clear
 xattr -dr com.apple.quarantine . 2>/dev/null

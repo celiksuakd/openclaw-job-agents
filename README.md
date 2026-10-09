@@ -4,7 +4,11 @@ A team of six [OpenClaw](https://openclaw.ai) agents that finds jobs, scores the
 
 It's built to be installed on a client's own computer (macOS, Linux or Windows) and run there day to day, in a chat window on the computer or in the chat app the client already uses (Telegram, WhatsApp, Discord, Slack, …).
 
-> **🍎 New to this? On a Mac:** download the ZIP (green **Code** button → **Download ZIP**), unzip it, right-click **Install JobSquad** → **Open**, and answer the questions. No technical knowledge needed. Step-by-step: [docs/MAC-START-HERE.md](docs/MAC-START-HERE.md)
+> **🍎 New to this? On a Mac:** open **Terminal** (⌘ Space, type "Terminal"), paste this line, press Return, and answer the questions. No technical knowledge needed.
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/celiksuakd/openclaw-job-agents/main/install/get.sh | bash
+> ```
+> Prefer to download the ZIP? See [docs/MAC-START-HERE.md](docs/MAC-START-HERE.md); macOS asks you to allow it once in System Settings.
 
 ```
 07:30–08:00  Chief fetches ~3,000 postings from public job-board APIs → cheap filter keeps ~30
@@ -40,7 +44,7 @@ They share one deterministic CLI, `jobsquad` (SQLite tracker, job fetchers, QA, 
 
 ## Install on a client's computer
 
-**Mac, guided (for non-technical users):** double-click `Install JobSquad.command`, or run:
+**Mac, guided (for non-technical users):** run this in Terminal (or double-click `Install JobSquad.command` from the ZIP; macOS then needs a one-time **Open Anyway** in System Settings → Privacy & Security, because the file isn't notarized):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/celiksuakd/openclaw-job-agents/main/install/get.sh | bash
 ```
