@@ -364,6 +364,33 @@ async function gatewayUp(port, waitSeconds = 0) {
   return false;
 }
 
+// Is an AI account usable? `models status --check` exits 1 both for "missing" and for
+// "indeterminate" (e.g. Claude CLI / subscription logins that work fine), and refuses to run
+// without --agent on multi-agent installs. So read the JSON and only call it missing when it is.
+function aiStatus() {
+  const sys = oc(['config', 'get', 'agents.defaults.systemAgent.agentId'], { allowFail: true, capture: true });
+  const sysId = sys.status === 0 ? (sys.stdout || '').trim().split('\n').pop().replace(/^"|"$/g, '') : '';
+  const listed = (ocJson(['agents', 'list']) || []).map((a) => a.id || a.agentId).filter(Boolean);
+  const candidates = [...new Set([sysId, 'job-chief', 'main', listed[0]].filter((x) => x && (!listed.length || listed.includes(x))))];
+  for (const agent of [...candidates, null]) {
+    const st = ocJson(['models', 'status', ...(agent ? ['--agent', agent] : [])]);
+    if (!st || typeof st !== 'object' || !st.auth) continue;
+    const issues = st.auth.modelRouteIssues || [];
+    const routes = st.auth.runtimeAuthRoutes || [];
+    const blocking = [
+      ...(st.auth.missingProvidersInUse || []).map((p) => `no ${p} account connected`),
+      ...routes.filter((r) => ['missing', 'unavailable', 'expired'].includes(r.status) || r.effective?.kind === 'missing')
+        .map((r) => `${r.provider} ${r.authStatus || r.status}`),
+      ...issues.filter((i) => i.kind && i.kind !== 'indeterminate').map((i) => i.message || `${i.provider}: ${i.kind}`),
+    ];
+    if (!st.defaultModel && !st.resolvedDefault) blocking.push('no AI model chosen');
+    if (blocking.length) return { ready: false, detail: [...new Set(blocking)].slice(0, 2).join('; ') };
+    const runtimes = routes.map((r) => r.runtime).filter(Boolean);
+    return { ready: true, detail: issues.length ? `via ${runtimes[0] || 'your login'}; OpenClaw can't pre-check this login type, which is normal` : '' };
+  }
+  return { ready: 'unknown', detail: 'OpenClaw did not return a status' };
+}
+
 // Make sure OpenClaw can think (model login) and is running, fixing what we can.
 async function beginnerChecks() {
   say(`\n${'Checking OpenClaw'}`);
@@ -376,19 +403,21 @@ async function beginnerChecks() {
     if (process.platform === 'darwin') spawnSync('open', ['https://openclaw.ai']);
     process.exit(1);
   }
-  let r = oc(['models', 'status', '--check'], { allowFail: true, capture: true });
-  if (r.status === 1) {
+  let ai = aiStatus();
+  if (ai.ready === false) {
     say(`
   OpenClaw isn't connected to an AI account yet. JobSquad needs one to read jobs and write
   applications (for example a Claude or ChatGPT subscription, or an API key).
-  OpenClaw's own setup will start now. Pick the quick start and follow the steps.`);
+  OpenClaw's own setup will start now. Pick the quick start and follow the steps.
+  (OpenClaw said: ${ai.detail})`);
     await wiz.pause('  Press Enter to start OpenClaw setup…');
     wiz.closeIo();
     oc(['onboard', '--flow', 'quickstart', '--install-daemon'], { allowFail: true, inherit: true });
-    r = oc(['models', 'status', '--check'], { allowFail: true, capture: true });
-    if (r.status === 1) die('OpenClaw still has no working AI account. Open the OpenClaw app, finish its setup, then run this installer again.');
+    ai = aiStatus();
+    if (ai.ready === false) die(`OpenClaw still has no working AI account (${ai.detail}). Open the OpenClaw app, finish its setup, then run this installer again.`);
   }
-  ok('AI account connected');
+  if (ai.ready === true) ok(ai.detail ? `AI account connected (${ai.detail})` : 'AI account connected');
+  else warn(`couldn't confirm the AI account (${ai.detail}); continuing. If JobSquad doesn't answer in the chat, open the OpenClaw app and check its AI account.`);
   const port = gatewayPort();
   if (!(await gatewayUp(port))) {
     say('  Starting OpenClaw in the background (it will also start when you log in)…');
@@ -415,14 +444,23 @@ function clientAlreadySetUp() {
 async function wizardFlow() {
   preflight();
   let answers = null;
-  if (!clientAlreadySetUp() || await wiz.yes(`JobSquad is already set up on this Mac. Answer the setup questions again?`, false)) {
+  const draft = path.join(HOME, '.setup-answers.json');
+  if (!clientAlreadySetUp()) {
+    if (fs.existsSync(draft) && await wiz.yes('Use the answers you gave last time?', true)) answers = JSON.parse(fs.readFileSync(draft, 'utf8'));
+    else answers = await wiz.interview();
+  } else if (await wiz.yes('JobSquad is already set up on this Mac. Answer the setup questions again?', false)) {
     answers = await wiz.interview();
+  }
+  if (answers) {
+    fs.mkdirSync(HOME, { recursive: true });
+    fs.writeFileSync(draft, JSON.stringify(answers), { mode: 0o600 });
   }
   const port = await beginnerChecks();
   say('\nInstalling JobSquad (about a minute)…');
   files();
   if (answers) {
     wiz.writeClientFiles(HOME, answers, Intl.DateTimeFormat().resolvedOptions().timeZone);
+    fs.rmSync(draft, { force: true });
     ok('your answers saved');
   }
   agents();
@@ -459,6 +497,7 @@ ${'\x1b[32m'}✓ JobSquad is ready.${'\x1b[0m'}
 (async () => {
   say(`JobSquad ${fs.readFileSync(path.join(KIT, 'VERSION'), 'utf8').trim()} installer → ${HOME}${opt.profile ? ` (OpenClaw profile ${opt.profile})` : ''}`);
   if (opt.uninstall) return uninstall();
+  if (opt['check-ai']) { preflight(); const ai = aiStatus(); say(`AI account: ${ai.ready === true ? 'ready' : ai.ready === false ? 'NOT ready' : 'unknown'}${ai.detail ? ` (${ai.detail})` : ''}`); return; }
   if (opt.wizard) return wizardFlow();
   preflight();
   if (runStep('files')) files();
