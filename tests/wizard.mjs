@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const KIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'jobsquad-wiz-'));
@@ -15,12 +15,12 @@ try {
     ...(process.platform === 'darwin' ? ['n'] : []), '',
     'Data Analyst, BI Analyst', 'intern', 'Istanbul, Berlin', 'y', 'Yes, within the EU', 'likes fintech', '', 'Germany', '', '',
     'EUR', '40.000', '50000', '', '5', '1', 'Türkçe', ...(process.platform === 'darwin' ? ['n'] : []), 'y'].join('\n') + '\n';
-  const script = `import * as w from ${JSON.stringify(path.join(KIT, 'install', 'wizard.mjs'))};
+  const script = `import * as w from ${JSON.stringify(pathToFileURL(path.join(KIT, 'install', 'wizard.mjs')).href)};
 const a = await w.interview(); w.closeIo(); w.writeClientFiles(${JSON.stringify(HOME)}, a, 'Europe/Istanbul');`;
   const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], { input: answers, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr + r.stdout.slice(-500));
 
-  const { readJsonc } = await import(path.join(KIT, 'runtime', 'lib', 'config.mjs'));
+  const { readJsonc } = await import(pathToFileURL(path.join(KIT, 'runtime', 'lib', 'config.mjs')).href);
   const c = readJsonc(path.join(HOME, 'client', 'client.jsonc'));
   const a = readJsonc(path.join(HOME, 'client', 'answers.jsonc'));
   assert.equal(c.client.name, 'Ayşe Yılmaz');
