@@ -23,13 +23,13 @@ export function htmlToText(html = '') {
     .replace(/<\/(p|div|h[1-6]|li|ul|ol|tr|section)>/gi, '\n')
     .replace(/<[^>]+>/g, '');
   return decodeEntities(s)
-    .replace(/[ \t ]+/g, ' ')
+    .replace(/[ \t\u00a0]+/g, ' ')
     .replace(/\n\s*\n\s*\n+/g, '\n\n')
     .trim();
 }
 
 export function norm(s = '') {
-  return String(s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9+#]+/g, ' ').trim();
+  return String(s).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9+#]+/g, ' ').trim();
 }
 
 // "data analyst" matches "Senior Data Analyst, Growth". "/regex/" terms are treated as regex.

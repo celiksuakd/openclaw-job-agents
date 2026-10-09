@@ -6,44 +6,41 @@
     "last_name": "REPLACE",
     "preferred_name": "",
     "email": "REPLACE@example.com",
-    "phone": "+90 5xx xxx xx xx",
-    "city": "Istanbul",
-    "country": "Türkiye",
-    "linkedin": "https://www.linkedin.com/in/REPLACE",
+    "phone": "",                          // e.g. "+90 555 123 45 67"
+    "city": "",
+    "country": "",
+    "linkedin": "",                       // full URL
     "github": "",
     "portfolio": "",
     "pronouns": ""                       // leave empty to skip optional pronoun fields
   },
 
   "work_authorization": {
-    // Be exact; wrong answers here can void an offer.
-    "Türkiye": "Citizen, no sponsorship needed",
-    "European Union": "Requires sponsorship",
-    "United Kingdom": "Requires sponsorship",
-    "United States": "Requires sponsorship",
-    "default": "Requires sponsorship"
+    // Be exact; wrong answers here can void an offer. One line per country/region, e.g.
+    //   "Türkiye": "Citizen, no sponsorship needed",  "European Union": "Requires sponsorship"
+    "default": "REPLACE"
   },
-  "willing_to_relocate": "Yes, within the EU",
-  "remote_preference": "Remote or hybrid",
-  "notice_period": "1 month",
-  "earliest_start_date": "Available with 1 month notice",
+  "willing_to_relocate": "",            // e.g. "Yes, within the EU" / "No"
+  "remote_preference": "",
+  "notice_period": "",                  // e.g. "1 month"
+  "earliest_start_date": "",
 
   "salary": {
-    "currency": "EUR",
-    "minimum_annual": 45000,
-    "target_annual": 55000,
-    "answer_text": "My expectation is in the €50–60k range, depending on the full package.",
+    "currency": "",                     // e.g. "EUR", "TRY", "USD"
+    "minimum_annual": null,
+    "target_annual": null,
+    "answer_text": "",                  // e.g. "My expectation is in the €50–60k range, depending on the full package."
     "share_when_optional": false         // leave optional salary fields blank
   },
 
-  "years_experience": { "total": 4, "sql": 4, "python": 3, "tableau": 2 },
-  "highest_education": "BSc Industrial Engineering, Boğaziçi University, 2021",
-  "languages": { "Turkish": "Native", "English": "Professional (C1)" },
+  "years_experience": { "total": null }, // add per-skill years only if true, e.g. "sql": 4
+  "highest_education": "",              // e.g. "BSc Industrial Engineering, Boğaziçi University, 2021"
+  "languages": {},                     // e.g. { "Turkish": "Native", "English": "Professional (C1)" }
 
   "how_did_you_hear": "Company careers page",
-  "previously_worked_here": "No",
-  "has_relatives_at_company": "No",
-  "background_check_ok": "Yes",
+  "previously_worked_here": "",          // varies per company; leave empty so the client is asked
+  "has_relatives_at_company": "",
+  "background_check_ok": "",
   "over_18": "Yes",
 
   // Voluntary self-identification (EEO / diversity) questions.

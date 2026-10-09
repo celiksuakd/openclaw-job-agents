@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import * as wiz from './wizard.mjs';
 
 const KIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WIN = process.platform === 'win32';
@@ -67,6 +68,7 @@ const opt = parseArgs(process.argv.slice(2));
 if (opt.help) {
   console.log(`JobSquad installer
 
+  --wizard                         guided setup for beginners (asks plain questions; default for the Mac double-click installer)
   --client-name "Jane Doe"         client's full name (first install)
   --timezone Europe/Istanbul       default: this computer's timezone
   --language en                    language the Chief writes in
@@ -108,12 +110,12 @@ function findOpenclaw() {
 let OC;
 const winQuote = (a) => (/^[\w.:/\\=@*,-]+$/.test(a) ? a : `"${a.replace(/"/g, '\\"')}"`);
 
-function oc(args, { allowFail = false, capture = false } = {}) {
+function oc(args, { allowFail = false, capture = false, inherit = false } = {}) {
   const full = [...(opt.profile ? ['--profile', opt.profile] : []), ...args];
   if (opt['dry-run']) { say(`    $ openclaw ${full.map(winQuote).join(' ')}`); return { status: 0, stdout: '' }; }
   const r = WIN
-    ? spawnSync(`${winQuote(OC.bin)} ${full.map(winQuote).join(' ')}`, { encoding: 'utf8', shell: true, timeout: 180_000 })
-    : spawnSync(OC.bin, full, { encoding: 'utf8', timeout: 180_000 });
+    ? spawnSync(`${winQuote(OC.bin)} ${full.map(winQuote).join(' ')}`, { encoding: 'utf8', shell: true, timeout: inherit ? 0 : 180_000, stdio: inherit ? 'inherit' : 'pipe' })
+    : spawnSync(OC.bin, full, { encoding: 'utf8', timeout: inherit ? 0 : 180_000, stdio: inherit ? 'inherit' : 'pipe' });
   if (r.status !== 0 && !allowFail) die(`openclaw ${args.slice(0, 3).join(' ')} failed:\n${(r.stderr || r.stdout || r.error?.message || '').trim()}`);
   if (!capture && r.status === 0 && process.env.JOBSQUAD_VERBOSE) process.stdout.write(r.stdout);
   return r;
@@ -160,13 +162,14 @@ function clientValues() {
   return {
     CLIENT_NAME: name,
     CLIENT_FIRST: name.split(/\s+/)[0],
-    LANGUAGE: pick('language') || opt.language || 'en',
+    LANGUAGE: LANGS[pick('language') || opt.language || 'en'] || pick('language') || opt.language || 'English',
     TIMEZONE: pick('timezone') || opt.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
     JOBSQUAD_HOME: HOME,
     JOBSQUAD: BIN,
     DATE: new Date().toISOString().slice(0, 10),
   };
 }
+const LANGS = { en: 'English', tr: 'Turkish (Türkçe)', de: 'German', fr: 'French', es: 'Spanish', it: 'Italian', nl: 'Dutch', pt: 'Portuguese' };
 const render = (text, v) => text.replace(/\{\{([A-Z_]+)\}\}/g, (m, k) => v[k] ?? m);
 
 // ---------------------------------------------------------------- steps
@@ -296,17 +299,21 @@ function schedule() {
   const list = ocJson(['automations', 'list', '--all']);
   const jobs = Array.isArray(list) ? list : list?.jobs || [];
   for (const j of jobs) if (String(j.name || '').startsWith('jobsquad-')) oc(['automations', 'remove', j.id || j.jobId], { allowFail: true });
-  const deliver = opt['deliver-channel'] && opt['deliver-to']
-    ? ['--announce', '--channel', opt['deliver-channel'], '--to', opt['deliver-to']]
-    : ['--no-deliver'];
+  // With a chat channel: fresh session each run, final reply announced to the client's chat.
+  // Without one (beginners): run inside job-chief's main session, so the digest shows up in the
+  // JobSquad chat window and the client can answer right there.
+  const toChat = opt['deliver-channel'] && opt['deliver-to'];
+  const route = toChat
+    ? ['--session', 'isolated', '--announce', '--channel', opt['deliver-channel'], '--to', opt['deliver-to']]
+    : ['--session', 'session:agent:job-chief:main', '--no-deliver'];
   const add = (name, cron, message, timeout) => {
     oc(['automations', 'add', '--name', name, '--cron', cron, '--tz', v.TIMEZONE, '--agent', 'job-chief',
-      '--session', 'isolated', '--message', message, '--timeout-seconds', String(timeout), ...deliver]);
-    ok(`${name}  ${cron}  (${v.TIMEZONE})`);
+      '--message', message, '--timeout-seconds', String(timeout), ...route]);
+    ok(`${name}  ${cron}  (${v.TIMEZONE})${toChat ? ` → ${opt['deliver-channel']}` : ' → JobSquad chat'}`);
   };
   add('jobsquad-daily', '0 8 * * 1-5', 'DAILY_RUN: follow the DAILY_RUN procedure in your AGENTS.md.', 3600);
   add('jobsquad-weekly', '0 17 * * 5', 'WEEKLY: spawn job-tracker with "WEEKLY_REPORT" and send its summary to the client.', 1800);
-  if (deliver[0] === '--no-deliver') warn('digests are not delivered to chat yet. Re-run with --only schedule --deliver-channel <channel> --deliver-to <chat id>.');
+  if (!toChat) ok('digests appear in the JobSquad chat (Desktop icon / Control UI); add a phone app later with --only schedule --deliver-channel telegram --deliver-to <chat id>');
 }
 
 function doctor() {
@@ -330,14 +337,129 @@ async function uninstall() {
     const r = oc(['agents', 'delete', id, '--force'], { allowFail: true });
     if (r.status === 0) ok(`${id} deleted (workspace moved to Trash)`);
   }
+  const desk = path.join(os.homedir(), 'Desktop');
+  for (const f of ['JobSquad.command', 'JobSquad Files']) {
+    const p = path.join(desk, f);
+    try {
+      const st = fs.lstatSync(p);
+      if (st.isSymbolicLink() ? path.resolve(fs.readlinkSync(p)) === HOME : fs.readFileSync(p, 'utf8').includes(HOME)) { fs.rmSync(p); ok(`Desktop/${f} removed`); }
+    } catch {}
+  }
   if (opt.purge) { fs.rmSync(HOME, { recursive: true, force: true }); ok(`${HOME} deleted`); }
   else say(`  Client data kept in ${HOME}. Use --purge to delete it.`);
+}
+
+// ---------------------------------------------------------------- beginner helpers
+const PORT_DEFAULT = 18789;
+function gatewayPort() {
+  const r = oc(['config', 'get', 'gateway.port'], { allowFail: true, capture: true });
+  const n = Number((r.stdout || '').trim().split('\n').pop());
+  return Number.isInteger(n) && n > 0 ? n : PORT_DEFAULT;
+}
+async function gatewayUp(port, waitSeconds = 0) {
+  for (let i = 0; i <= waitSeconds; i++) {
+    try { await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1500) }); return true; } catch {}
+    if (i < waitSeconds) await new Promise((r) => setTimeout(r, 1000));
+  }
+  return false;
+}
+
+// Make sure OpenClaw can think (model login) and is running, fixing what we can.
+async function beginnerChecks() {
+  say(`\n${'Checking OpenClaw'}`);
+  if (!OC) {
+    say(`
+  OpenClaw isn't installed on this Mac yet. JobSquad runs inside OpenClaw.
+  1. Your browser will open openclaw.ai. Download and install OpenClaw.
+  2. Open it once and follow its setup (it asks you to connect an AI account).
+  3. Then double-click "Install JobSquad" again.`);
+    if (process.platform === 'darwin') spawnSync('open', ['https://openclaw.ai']);
+    process.exit(1);
+  }
+  let r = oc(['models', 'status', '--check'], { allowFail: true, capture: true });
+  if (r.status === 1) {
+    say(`
+  OpenClaw isn't connected to an AI account yet. JobSquad needs one to read jobs and write
+  applications (for example a Claude or ChatGPT subscription, or an API key).
+  OpenClaw's own setup will start now. Pick the quick start and follow the steps.`);
+    await wiz.pause('  Press Enter to start OpenClaw setup…');
+    wiz.closeIo();
+    oc(['onboard', '--flow', 'quickstart', '--install-daemon'], { allowFail: true, inherit: true });
+    r = oc(['models', 'status', '--check'], { allowFail: true, capture: true });
+    if (r.status === 1) die('OpenClaw still has no working AI account. Open the OpenClaw app, finish its setup, then run this installer again.');
+  }
+  ok('AI account connected');
+  const port = gatewayPort();
+  if (!(await gatewayUp(port))) {
+    say('  Starting OpenClaw in the background (it will also start when you log in)…');
+    oc(['daemon', 'install'], { allowFail: true });
+    oc(['daemon', 'start'], { allowFail: true });
+    if (!(await gatewayUp(port, 30))) die('OpenClaw did not start. Open the OpenClaw app once, then run this installer again.');
+  }
+  ok('OpenClaw is running');
+  return port;
+}
+
+async function restartGateway(port) {
+  say('\n  Restarting OpenClaw so it loads the JobSquad team…');
+  const r = oc(['daemon', 'restart'], { allowFail: true });
+  if (r.status !== 0) oc(['gateway', 'restart'], { allowFail: true });
+  if (!(await gatewayUp(port, 45))) warn('OpenClaw is taking long to restart; schedules may need: ./install/install.sh --only schedule');
+  else ok('OpenClaw restarted');
+}
+
+function clientAlreadySetUp() {
+  try { return !/REPLACE/.test(fs.readFileSync(path.join(HOME, 'client', 'client.jsonc'), 'utf8').match(/"name"\s*:\s*"([^"]*)"/)[1]); } catch { return false; }
+}
+
+async function wizardFlow() {
+  preflight();
+  let answers = null;
+  if (!clientAlreadySetUp() || await wiz.yes(`JobSquad is already set up on this Mac. Answer the setup questions again?`, false)) {
+    answers = await wiz.interview();
+  }
+  const port = await beginnerChecks();
+  say('\nInstalling JobSquad (about a minute)…');
+  files();
+  if (answers) {
+    wiz.writeClientFiles(HOME, answers, Intl.DateTimeFormat().resolvedOptions().timeZone);
+    ok('your answers saved');
+  }
+  agents();
+  config();
+  approvals();
+  await restartGateway(port);
+  schedule();
+  say('\nLooking for jobs for the first time…');
+  const f = spawnSync(BIN, ['fetch', '--quiet'], { encoding: 'utf8' });
+  say(`  ${(f.stdout || f.stderr || '').trim().split('\n')[0]}`);
+  const shortcuts = answers?.shortcut !== false ? wiz.makeShortcuts(HOME, OC.bin, port) : [];
+  fs.copyFileSync(path.join(KIT, 'docs', 'HOW-TO-USE.md'), path.join(HOME, 'HOW-TO-USE.md'));
+  spawnSync(BIN, ['notify', 'JobSquad', 'Setup finished. Say hi in the chat!'], { encoding: 'utf8' });
+  say(`
+${'\x1b[32m'}✓ JobSquad is ready.${'\x1b[0m'}
+
+  ${shortcuts.length ? 'Double-click the "JobSquad" icon on your Desktop' : `Open http://127.0.0.1:${port}/chat/job-chief`} any time to chat with your
+  job search lead. It's opening now. Say "Hi". It will check your CV with you and start the search.
+
+  Every weekday at 08:00 your new matches appear in that chat (you'll get a notification).
+  Reply with "approve 12" or "skip 12". Your files and applications are in "JobSquad Files".
+  A short guide: ${path.join(HOME, 'HOW-TO-USE.md')}
+`);
+  if (process.platform === 'darwin') {
+    spawnSync(OC.bin, [...(opt.profile ? ['--profile', opt.profile] : []), 'dashboard'], { encoding: 'utf8', timeout: 60_000 });
+    try { fs.writeFileSync(path.join(HOME, '.paired'), ''); } catch {}
+    await new Promise((r) => setTimeout(r, 3000));
+    spawnSync('open', [`http://127.0.0.1:${port}/chat/job-chief?draft=${encodeURIComponent('Hi! I just set up JobSquad.')}`]);
+  }
+  wiz.closeIo();
 }
 
 // ---------------------------------------------------------------- main
 (async () => {
   say(`JobSquad ${fs.readFileSync(path.join(KIT, 'VERSION'), 'utf8').trim()} installer → ${HOME}${opt.profile ? ` (OpenClaw profile ${opt.profile})` : ''}`);
   if (opt.uninstall) return uninstall();
+  if (opt.wizard) return wizardFlow();
   preflight();
   if (runStep('files')) files();
   if (runStep('agents')) agents();

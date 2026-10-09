@@ -34,7 +34,7 @@
     "must_have_any": [],                // e.g. ["sql", "python"]: at least one must appear in the description
     "deal_breakers": ["unpaid", "commission only"], // the Matcher scores these ≤ 20
     "max_age_days": 21,
-    "notes": "Prefers product companies, fintech or e-commerce. No gambling. Open to relocating within the EU with sponsorship."
+    "notes": ""                          // free text for the Matcher, e.g. "Prefers fintech or e-commerce. No gambling."
   },
 
   // Where to look. Board tokens are the slug in the company's job-board URL:
@@ -42,7 +42,7 @@
   //   apply.workable.com/<token>     jobs.smartrecruiters.com/<Token>
   // The Scout also adds boards it discovers (see `jobsquad boards list`).
   "sources": {
-    "greenhouse": ["anthropic"],
+    "greenhouse": [],                   // e.g. ["anthropic", "stripe"]
     "lever": [],
     "ashby": [],
     "workable": [],
@@ -50,7 +50,7 @@
     "remotive": { "enabled": true },    // remote jobs, searched by your titles
     "remoteok": { "enabled": false },
     "arbeitnow": { "enabled": false },  // Germany / EU
-    "himalayas": { "enabled": false }
+    "himalayas": { "enabled": true }
   },
 
   "apply_policy": {

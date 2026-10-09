@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { appDir, loadAnswers, loadConfig, paths, readJsonc, HOME } from './lib/config.mjs';
 import { open, now, getJob, setStatus, logEvent, appendNote, hasEvent, meta, STATUSES, OPEN_STATUSES } from './lib/db.mjs';
 import { BOARD_SOURCES, FEED_SOURCES, detectAts } from './lib/sources.mjs';
@@ -332,7 +333,7 @@ function fileBase() {
   const a = loadAnswers();
   const cfg = loadConfig();
   const name = [a.identity?.first_name, a.identity?.last_name].filter(Boolean).join(' ') || cfg.client?.name || 'Candidate';
-  return name.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  return name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
 
 function cmdRender(id) {
@@ -453,7 +454,9 @@ function cmdDigest(opt) {
   const human = d.prepare("SELECT id, company, title, apply_url, notes FROM jobs WHERE status = 'needs_human' ORDER BY updated_at").all();
   const due = d.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'applied' AND follow_up_at <= ?").get(now()).n;
   const lines = [];
-  const day = new Date().toLocaleDateString(cfg.client?.language || 'en', { weekday: 'short', day: 'numeric', month: 'short', timeZone: cfg.client?.timezone || undefined });
+  const fmt = { weekday: 'short', day: 'numeric', month: 'short', timeZone: cfg.client?.timezone || undefined };
+  let day;
+  try { day = new Date().toLocaleDateString(cfg.client?.language || 'en', fmt); } catch { day = new Date().toLocaleDateString('en', fmt); }
   lines.push(`JobSquad · ${day} · mode: ${cfg.mode}${cfg.paused ? ' (PAUSED)' : ''}`);
   if (fresh.length) {
     lines.push('', `New matches (${fresh.length}):`);
@@ -513,6 +516,17 @@ function cmdExport(opt) {
   console.log(`${rows.length} rows → ${file}`);
 }
 
+// Desktop notification (macOS); elsewhere it just prints.
+function cmdNotify(pos) {
+  const [title = 'JobSquad', ...rest] = pos;
+  const text = rest.join(' ') || 'There is news in your JobSquad chat.';
+  if (process.platform === 'darwin') {
+    const q = (s) => `"${String(s).replace(/[\\"]/g, '\\$&')}"`;
+    spawnSync('osascript', ['-e', `display notification ${q(text)} with title ${q(title)} sound name "Glass"`]);
+  }
+  console.log(`notified: ${title} — ${text}`);
+}
+
 // ---------------------------------------------------------------- doctor
 function cmdDoctor(opt) {
   const checks = [];
@@ -535,7 +549,8 @@ function cmdDoctor(opt) {
   try {
     const a = readJsonc(paths.answers);
     add(!!a.identity?.email && !/REPLACE|example\.com/i.test(a.identity.email), 'answers.jsonc identity filled', 'fill identity.* in answers.jsonc');
-    add(!!a.work_authorization, 'answers.jsonc work authorization filled', 'fill work_authorization');
+    const wa = Object.values(a.work_authorization || {});
+    add(wa.length > 0 && !wa.some((v) => /REPLACE/.test(v)), 'answers.jsonc work authorization filled', 'fill work_authorization');
   } catch (e) { add(false, 'answers.jsonc parses', e.message); }
   add(fs.existsSync(paths.originalResume), 'client/resume.pdf present (fallback + reference)', 'optional', false);
   const chrome = findChrome();
@@ -564,7 +579,7 @@ Apply        can-apply <id> [--json]     (exit 2 = deny; never apply without ALL
              stage-upload <id>      set <id> applying
              applied <id> --evidence <screenshot> [--note ..]      needs-human <id> --reason "..." [--evidence f]
 After        followups      followup <id> --days n      set <id> interview|offer|rejected|withdrawn|ghosted [--note ..]
-Report       digest [--no-mark]      stats [--days n]      export [--csv file]
+Report       digest [--no-mark]      stats [--days n]      export [--csv file]      notify "Title" "text"
 
 Statuses: ${STATUSES.join(', ')}`;
 
@@ -600,6 +615,7 @@ async function main() {
     case 'digest': return cmdDigest(opt);
     case 'stats': return cmdStats(opt);
     case 'export': return cmdExport(opt);
+    case 'notify': return cmdNotify(pos);
     default: fail(`unknown command "${cmd}". Run: jobsquad help`);
   }
 }

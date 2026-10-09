@@ -2,7 +2,9 @@
 
 A team of six [OpenClaw](https://openclaw.ai) agents that finds jobs, scores them against a candidate's real experience, tailors truthful application documents, and applies, with the candidate approving every submission by default.
 
-It's built to be installed on a client's own computer (macOS, Linux or Windows) in one command, and run there day to day over the chat app the client already uses (Telegram, WhatsApp, Discord, Slack, …).
+It's built to be installed on a client's own computer (macOS, Linux or Windows) and run there day to day, in a chat window on the computer or in the chat app the client already uses (Telegram, WhatsApp, Discord, Slack, …).
+
+> **🍎 New to this? On a Mac:** download the ZIP (green **Code** button → **Download ZIP**), unzip it, right-click **Install JobSquad** → **Open**, and answer the questions. No technical knowledge needed. Step-by-step: [docs/MAC-START-HERE.md](docs/MAC-START-HERE.md)
 
 ```
 07:30–08:00  Chief fetches ~3,000 postings from public job-board APIs → cheap filter keeps ~30
@@ -37,6 +39,14 @@ They share one deterministic CLI, `jobsquad` (SQLite tracker, job fetchers, QA, 
 - **Modes:** `review` (default: client approves each job), `assist` (forms filled, client clicks Submit), `auto` (high-scoring jobs on simple ATSs only, within caps).
 
 ## Install on a client's computer
+
+**Mac, guided (for non-technical users):** double-click `Install JobSquad.command`, or run:
+```bash
+curl -fsSL https://raw.githubusercontent.com/celiksuakd/openclaw-job-agents/main/install/get.sh | bash
+```
+It checks that OpenClaw is installed, connected to an AI account and running (and fixes what it can), asks plain-language questions, imports the CV from PDF or Word, sets up the team and schedule, and puts a **JobSquad** chat icon on the Desktop. Morning digests appear in that chat with a Mac notification; no Telegram setup is needed. The job seeker's guide is [docs/HOW-TO-USE.md](docs/HOW-TO-USE.md).
+
+**Manual / any OS (for operators):**
 
 1. Install OpenClaw and connect a model and the client's chat channel:
    ```bash

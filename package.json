@@ -5,12 +5,21 @@
   "license": "MIT",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.13" },
-  "bin": { "jobsquad": "runtime/jobsquad.mjs" },
-  "scripts": {
-    "test": "node --no-warnings tests/smoke.mjs",
-    "test:online": "node --no-warnings tests/smoke.mjs --online",
-    "check": "node --check runtime/jobsquad.mjs && node --check install/setup.mjs"
+  "engines": {
+    "node": ">=22.13"
   },
-  "keywords": ["openclaw", "agents", "job-search", "automation"]
+  "bin": {
+    "jobsquad": "runtime/jobsquad.mjs"
+  },
+  "scripts": {
+    "test": "node --no-warnings tests/smoke.mjs && node --no-warnings tests/wizard.mjs",
+    "test:online": "node --no-warnings tests/smoke.mjs --online",
+    "check": "node --check runtime/jobsquad.mjs && node --check install/setup.mjs && node --check install/wizard.mjs"
+  },
+  "keywords": [
+    "openclaw",
+    "agents",
+    "job-search",
+    "automation"
+  ]
 }
