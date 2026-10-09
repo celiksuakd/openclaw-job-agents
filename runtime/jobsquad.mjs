@@ -119,10 +119,27 @@ async function pool(tasks, size) {
   return results;
 }
 
+// When the client changes their search, give recently filtered jobs another chance.
+function refilterIfSearchChanged(cfg) {
+  const hash = crypto.createHash('sha1').update(JSON.stringify(cfg.search)).digest('hex');
+  if (meta('search_hash') === hash) return 0;
+  const d = open();
+  const rows = d.prepare("SELECT * FROM jobs WHERE status = 'filtered' AND fetched_at >= ?").all(daysAgo(cfg.search.max_age_days || 21));
+  let revived = 0;
+  for (const j of rows) {
+    const reason = prefilter(j, cfg.search);
+    if (!reason) { setStatus(j.id, 'new', { reason: null }, 'search settings changed'); revived++; }
+    else if (reason !== j.reason) d.prepare('UPDATE jobs SET reason = ? WHERE id = ?').run(reason, j.id);
+  }
+  meta('search_hash', hash);
+  return revived;
+}
+
 async function cmdFetch(opt) {
   const cfg = loadConfig();
   const d = open();
   seedBoards(cfg);
+  const revived = opt['dry-run'] ? 0 : refilterIfSearchChanged(cfg);
   const only = opt.source;
   const tasks = [];
   const summary = [];
@@ -162,8 +179,8 @@ async function cmdFetch(opt) {
   await pool(tasks, 4);
   if (!opt['dry-run']) { meta('last_fetch_at', now()); logEvent(null, 'fetch', JSON.stringify(summary)); }
   const tot = summary.reduce((a, c) => ({ new: a.new + c.new, filtered: a.filtered + c.filtered, dup: a.dup + c.dup, errors: a.errors + (c.error ? 1 : 0) }), { new: 0, filtered: 0, dup: 0, errors: 0 });
-  if (opt.json) return out({ total: tot, sources: summary }, true);
-  console.log(`fetch: ${tot.new} new for scoring, ${tot.filtered} filtered out, ${tot.dup} duplicates, ${tot.errors} source errors`);
+  if (opt.json) return out({ total: tot, revived, sources: summary }, true);
+  console.log(`fetch: ${tot.new} new for scoring, ${tot.filtered} filtered out, ${tot.dup} duplicates, ${tot.errors} source errors${revived ? ` (+${revived} earlier jobs now match your updated search)` : ''}`);
   if (!opt.quiet) for (const c of summary) console.log(`  ${c.source.padEnd(34)} new ${c.new}  filtered ${c.filtered}  dup ${c.dup}${c.closed ? `  closed ${c.closed}` : ''}${c.error ? `  ERROR ${short(c.error, 80)}` : ''}`);
 }
 

@@ -13,7 +13,7 @@ try {
   for (const f of ['client.jsonc', 'answers.jsonc', 'master_resume.md']) fs.copyFileSync(path.join(KIT, 'client-template', f), path.join(HOME, 'client', f));
   const answers = ['', 'Ayşe Yılmaz', 'ayse@test.dev', '+90 555', 'Istanbul', 'Türkiye', '',
     ...(process.platform === 'darwin' ? ['n'] : []), '',
-    'Data Analyst, BI Analyst', 'intern', 'Istanbul, Berlin', 'y', 'Yes, within the EU', 'likes fintech', '', 'Germany', '', '',
+    'Data Analyst, BI Analyst', 'y', 'intern', 'Istanbul, Berlin', 'y', 'Yes, within the EU', 'likes fintech', '', 'Germany', '', '',
     'EUR', '40.000', '50000', '', '5', '1', 'Türkçe', ...(process.platform === 'darwin' ? ['n'] : []), 'y'].join('\n') + '\n';
   const script = `import * as w from ${JSON.stringify(pathToFileURL(path.join(KIT, 'install', 'wizard.mjs')).href)};
 const a = await w.interview(); w.closeIo(); w.writeClientFiles(${JSON.stringify(HOME)}, a, 'Europe/Istanbul');`;
@@ -35,6 +35,9 @@ const a = await w.interview(); w.closeIo(); w.writeClientFiles(${JSON.stringify(
   assert.equal(a.years_experience.total, 5);
   const doc = spawnSync(process.execPath, ['--no-warnings', path.join(KIT, 'runtime', 'jobsquad.mjs'), 'doctor'], { env: { ...process.env, JOBSQUAD_HOME: HOME }, encoding: 'utf8' }).stdout;
   assert.match(doc, /✓ answers\.jsonc work authorization filled/);
+  const { cleanTitles } = await import(pathToFileURL(path.join(KIT, 'install', 'wizard.mjs')).href);
+  assert.deepEqual(cleanTitles('chemical engineering and management engineering jobs'), ['chemical engineer', 'management engineer']);
+  assert.deepEqual(cleanTitles('Process Engineer, supply chain roles / Operations Analyst'), ['Process Engineer', 'supply chain', 'Operations Analyst']);
   console.log('wizard test passed');
 } finally {
   fs.rmSync(HOME, { recursive: true, force: true });

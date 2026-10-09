@@ -273,6 +273,24 @@ function config() {
   fs.rmSync(patch, { force: true });
   oc(['config', 'validate']);
   ok('agents.entries.job-* patched and validated');
+  webSearch();
+}
+
+// The Scout needs web_search to discover company job boards. If no provider is chosen, use
+// Parallel's free tier (no account or key), installing its plugin if needed.
+function webSearch() {
+  const cur = oc(['config', 'get', 'tools.web.search.provider'], { allowFail: true, capture: true });
+  const val = cur.status === 0 ? (cur.stdout || '').trim().split('\n').pop().replace(/^"|"$/g, '') : '';
+  if (val && val !== 'auto' && !/unset|not set/i.test(val)) { ok(`web search: ${val}`); return; }
+  const plugins = oc(['plugins', 'list'], { allowFail: true, capture: true });
+  if (!/parallel/i.test(plugins.stdout || '')) oc(['plugins', 'install', '@openclaw/parallel-plugin'], { allowFail: true, capture: true });
+  const set = oc(['config', 'set', 'tools.web.search.provider', 'parallel-free'], { allowFail: true, capture: true });
+  const valid = set.status === 0 && oc(['config', 'validate'], { allowFail: true, capture: true }).status === 0;
+  if (valid) ok('web search: Parallel (free, no key needed)');
+  else {
+    if (set.status === 0) oc(['config', 'unset', 'tools.web.search.provider'], { allowFail: true, capture: true });
+    warn('could not turn on web search; the Scout can\'t discover new company boards until a search provider is set (openclaw configure --section web)');
+  }
 }
 
 function approvals() {

@@ -55,6 +55,18 @@ async function choose(question, options, def = 1) {
 }
 
 const list = (s) => s.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean);
+
+// People answer "chemical engineering and management engineering jobs". Turn that into titles
+// a posting would actually use: "chemical engineer", "management engineer".
+export function cleanTitles(text) {
+  const out = [];
+  for (let part of text.split(/[,;\n/&|]+|\s+(?:and|or|e|o|ve|veya|und|oder|et|ou|y)\s+/i)) {
+    part = part.trim().replace(/\b(jobs?|roles?|positions?|opportunit(?:y|ies)|vacanc(?:y|ies)|openings?|careers?|lavoro|posizioni)\b/gi, '')
+      .replace(/\bengineering\b\s*$/i, 'engineer').replace(/\s+/g, ' ').trim();
+    if (part && !out.some((o) => o.toLowerCase() === part.toLowerCase())) out.push(part);
+  }
+  return out;
+}
 export function pause(msg = 'Press Enter to continue…') { return readLine(DIM(`${msg} `)); }
 
 // ---------------------------------------------------------------- macOS helpers
@@ -138,7 +150,12 @@ Setup takes about 10 minutes. Answer in your own words; you can change everythin
   }
 
   console.log(`\n${B('3. What you are looking for')}`);
-  a.titles = list(await ask('Which job titles? Separate with commas.', { required: true, hint: 'e.g. Data Analyst, Business Analyst, Reporting Specialist' }));
+  for (;;) {
+    a.titles = cleanTitles(await ask('Which job titles? Write them the way job ads do, separated by commas.', { required: true, hint: 'e.g. Process Engineer, Supply Chain Analyst, Operations Engineer' }));
+    console.log(`   I'll search for: ${a.titles.map((t) => B(t)).join(', ')}`);
+    if (a.titles.some((t) => t.split(' ').length > 4)) console.log('   Tip: short titles work best; long phrases rarely appear in job ads.');
+    if (await yes('Is that right?', true)) break;
+  }
   a.excludeTitles = list(await ask('Any words that rule a job OUT? (Enter to skip)', { hint: 'e.g. intern, director, sales' }));
   a.locations = list(await ask('Where can you work? Cities, countries or regions, separated by commas.', { required: true, def: `${a.city}, ${a.country}` }));
   a.remote = await yes('Are fully remote jobs OK too?', true);
