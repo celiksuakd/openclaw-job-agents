@@ -23,7 +23,7 @@ Have your CV ready (PDF or Word).
 
 1. On the GitHub page, click the green **Code** button, then **Download ZIP**, and double-click the ZIP in **Downloads** to unpack it.
 2. Double-click **Install JobSquad** in the unpacked folder. macOS says *"Apple could not verify 'Install JobSquad.command' is free of malware…"*. Click **Done** (not "Move to Trash").
-3. Open the **Apple menu  → System Settings → Privacy & Security**, and scroll down to the **Security** section.
+3. Open the **Apple menu → System Settings → Privacy & Security**, and scroll down to the **Security** section.
 4. Next to *"Install JobSquad.command" was blocked…*, click **Open Anyway**, and confirm with your password or Touch ID.
 5. Double-click **Install JobSquad** again and click **Open Anyway** once more. Then continue from step 3 of Option A.
 
